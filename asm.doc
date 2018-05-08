@@ -1,0 +1,629 @@
+6502 FORTH ASSEMBLER by W. Ragsdale
+
+Introduction
+
+This article should further polarize the attitudes of those outside the
+growing community of FORTH users. Some will be fascinated by a label-
+less, macro assembler whose source code is only 96 lines long! Others
+will be repelled by reverse Polish syntax and the absence of labels.
+
+The author immodestly claims that this is the best FORTH assembler
+ever distributed. It is the only assembler that detects all errors in op-code
+generation and conditional structuring. It is released to the public
+domain as a defense mechanism. Three good 6502 assemblers were
+submitted to the FORTH Interest Group but each had some lack. Rather
+than merge and edit for publication, the author chose to publish his
+with all the submitted features plus several more.
+
+Imagine having an assembler in 1300 bytes of object code with:
+
+    1.  User macros (like IF, UNTIL,) definable at any time.
+    2.  Literal values expressed in any numeric base, alterable at
+        any time.
+    3.  Expressions using any resident computation capability.
+    4.  Nested control structures without labels with error control.
+    5.  Assembler source itself in a portable high level language.
+
+Overview
+
+FORTH is provided with a machine language assembler to create
+execution procedures that would be time inefficient, if written as
+colon-definitions. It is intended that "code" be written similarly to high
+level, for clarity of expression. Functions may be written first in high
+level, tested, and then re-coded into assembly, with a minimum of
+restructuring.
+
+The Assembly Process
+
+Code assembly consists of interpreting with the ASSEMBLER vocabulary
+as CONTEXT. Thus each word in the input stream will be matched
+according to the FORTH practice of searching CONTEXT first, and then
+CURRENT.
+
+        ASSEMBLER       (now CONTEXT)
+        FORTH           (chained to ASSEMBLER)
+        user's          (CURRENT if one exists)
+        FORTH           (chained to user's vocabulary)
+        try for literal number
+        else, do error abort.
+
+The above sequence is the usual action of FORTH's text interpreter,
+which remains in control during assembly.
+
+During assembly of CODE definitions, FORTH continues interpretation of
+each word encountered in the input stream (not in the compile mode).
+These assembler words specify operands, address modes, and op-
+codes. At the conclusion of the CODE definition, a final error check
+verifies correct completion by "unsmudging" the definition's name, to
+make it available for dictionary searches.
+
+Run-Time, Assembly-Time
+
+One must be careful to understand at what time a particular word
+definition executes. During assembly, each assembler word interpreted
+executes. Its function at that instant is called 'assembling' or assembly-
+time'. This function may involve op-code generation, address calculation,
+mode selection, and so forth.
+
+The later execution of the generated code is called 'run-time'. This
+distinction is particularly important with the conditionals. At assembly
+time each such word (that is, IF, UNTIL, BEGIN, etc.) itself 'runs' to
+produce machine code which will later execute at what is labeled 'run-
+time' when its named code definition is used.
+
+An Example
+As a practical example, here's a simple call to the system monitor
+(KIM-1 only), via the NMI address vector (using the BRK op-code).
+
+        CODE MON (exit to monitor)
+             BRK, NEXT JMP, END-CODE
+
+The word CODE is first encountered and executed by FORTH. CODE
+builds the following name "MON" into a dictionary header and calls
+ASSEMBLER as the CONTEXT vocabulary.
+
+The "(" is next found in the FORTH and executed to skip until ")". This
+method skips over comments. Note that the name after CODE and the
+")" after "(" must be on the same text line.
+
+Op-Codes
+
+BRK, is next found in the assembler as the op-code. When BRK,
+executes, it assembles the byte value 00 (zero) into the dictionary as
+the op-code for "break to monitor" via "NMI".
+
+Many assembler word's names end in ",". The significance of this is:
+
+    1.  The comma shows the conclusion of a logical grouping that
+        would be one line of classical assembly source code.
+    2.  compiles Into the dictionary; thus a comma implies the
+        point at which code is generated.
+    3.  The "," distinguishes op-codes from possible HEX numbers
+        ADC and ADD.
+
+Next
+
+FORTH executes your word definitions under control of the address
+interpreter, named NEXT. This short code routine moves execution from
+one definition, to the next. At the end of your code definition, you must
+return control to NEXT or else to code which returns to NEXT.
+
+Return of Control
+
+Most 6502 systems can resume execution after a break, since the
+monitor (KIM-1 only) saves the CPU register contents. Therefore, we
+must return control to FORTH after a return from the monitor. NEXT is a
+constant that supplies the machine address of FORTH's address
+interpreter ($8115 for 64FORTH). Here it is the operand for JMP,. As
+JMP, executes, it assembles a machine code jump to the address of
+NEXT from the assembly time stack value.
+
+Security
+
+Numerous tests are made within the assembler for user errors:
+
+    1.  All parameters used in CODE definitions must be removed.
+    2.  Conditionals must be properly nested and paired.
+    3.  Address modes and operands must be allowed for the
+        op-codes.
+
+These tests are accomplished by checking the stack position (in CSP) at
+the creation of the definition name and comparing it with the position at
+END-CODE. Legality of address modes and operands is insured by
+means of a bit mask associated with each operand.
+
+Remember that if an error occurs during assembly, END-CODE never
+executes. The result is that the "smudged" condition of the definition
+name remains in the "smudged" condition and will not be found during
+dictionary searches.
+
+The user should be aware that one error not trapped is referencing a
+definition in the wrong vocabulary:
+
+        i.e.,   0= of ASSEMBLER when you want
+                0= of FORTH
+
+Summary (KIM-1 only)
+
+The object code of our example is:
+
+        3059  83  4D  4F  CE    CODE MON
+        305D  4D  30            link field
+        305F  61  30            code field
+        3061  00                BRK
+        3062  4C  42  02        JMP NEXT
+
+Op-Codes, revisited
+
+The bulk of the assembler consists of dictionary entries for each
+op-code. The 6502 one mode op-codes are:
+
+        BRK,    CLC,    CLD,    CLI,    CLV,
+        DEX,    DEY,    INX,    INY,    NOP,
+        PHA,    PHP,    PLA,    PLP,    RTI,
+        RTS,    SEC,    SED,    SEI,    TAX,
+        TAY,    TSX,    TXS,    TXA,
+
+When any of these are executed, the corresponding op-code byte is
+assembled into the dictionary.
+
+The multi-mode op-codes are:
+
+        ADC,    AND,    CMP,    EOR,    LDA,
+        ORA,    SBC,    STA,    ASL,    DEC,
+        INC,    LSR,    ROL,    ROR,    STX,
+        CPX,    CPY,    LDX,    LDY,    STY,
+        JSR,    JMP,    BIT,
+
+These usually take an operand, which must already be on the stack.
+An address mode may also be specified. If none is given the op-code
+uses z-page or absolute addressing. The address modes are described by:
+
+        SYMBOL  MODE                    OPERAND
+        .A      accumulator             none
+        #       immediate               8 bits only
+        ,X      indexed X               z-page or absolute
+        ,Y      indexed Y               z-page or absolute
+        X)      indexed indirect X      z-page only
+        )Y      indirect indexed Y      z-page only
+        )       indirect                absolute only
+        none    memory                  z-page or absolute
+
+Examples
+
+Here are examples of FORTH vs. a conventional assembler. Note that
+the operand comes first, followed by any mode modifier, and then the
+op-code mnemonic. This makes best use of the stack at assembly time.
+Also, each assembler word is set off by blanks, as is required for all
+FORTH source text.
+
+        FORTH ASSEMBLER                 CONVENTIONAL ASSEMBLER
+        .A              ROL,            ROL     A
+        1 #             LDY,            LDY     #1
+        DATA ,X         STA,            STA     DATA,X
+        DATA ,Y         CMP,            CMP     DATA,Y
+        06 X)           ADC,            ADC     (06,X)
+        POINT )Y        STA,            STA     (POINT),Y
+        VECTOR )        JMP,            JMP     (VECTOR)
+
+        ( .A distinguishes from the HEX number 0A )
+
+The word DATA and VECTOR specify machine addresses. in the case of
+" 06 )X ADC, " the operand memory address $0006 was given directly.
+This is occasionally done if the usage of a value does not justify
+devoting the dictionary space to a symbolic value.
+
+6502 Conventions
+
+Stack Addressing
+
+The data stack is located in z-page usually addressed by "Z-PAGE,X".
+The stack starts near $009E (64FORTH is at $0060) and grows down-
+ward. The X index register is the data stack pointer. Thus, incrementing
+X by two removes a data stack value; decrementing X twice makes
+room for one new data stack value.
+
+Sixteen-bit values are placed on the stack according to the 6502
+convention; the low byte is at low memory, with the high byte following.
+This allows "indexed, indirect X" directly off a stack value.
+
+The bottom and second stack values are referenced often enough that
+the support words BOT and SEC are included. Using:
+
+        BOT LDA, assembles LDA (0,X) and
+        SEC ADC, assembles ADC (2,X)
+
+BOT leaves 0 on the stack and sets the address mode to X. SEC leaves
+2 on the stack also setting the address mode to X.
+
+Here is a pictorial representation of the stack in z-page:
+
+        [                       ]
+        -------------------------
+        [       sec high        ]
+        [       sec low         ]
+        -------------------------
+        [       bot high        ]
+        [       bot low         ]  <-- X offset above $0000
+        -------------------------
+
+Here is an example of code to "or" to the accumulator four bytes on
+the stack:
+
+        BOT       LDA,          LDA (0,X)
+        BOT 1+    ORA,          ORA (1,X)
+        SEC       ORA,          ORA (2,X)
+        SEC 1+    ORA,          ORA (3,X)
+
+To obtain the 14-th byte on the stack:
+
+        BOT 13 +  LDA,          LDA (13,X)
+
+Return Stack
+
+The FORTH Return Stack is located in the 6502 machine stack in
+page 1. It starts at $01FE and builds downward. No lower bound is set or
+check as Page 1 has sufficient capacity for all (non-recursive)
+applications.
+
+By 6502 convention the CPU's register points to the next free byte
+below the bottom of the return stack. The byte order follows the
+convention of low significance byte at the lower address.
+
+Return stack values may be obtained by: PLA, PLA, which will pull the
+low byte and then the high byte from the return stack. To operate on
+arbitrary bytes, the method is:
+
+    1.  Save X in XSAVE.
+    2.  Execute TSX, to bring the S register to X.
+    3.  Use RP) to address the lowest byte of the return stack. Offset
+        the value to address higher bytes. (Address mode is
+        automatically set to ,X)
+    4.  Restore X from XSAVE.
+
+As an example, this definition non-destructively tests that the second
+item on the return stack (also the machine stack) is zero.
+
+        CODE IS-IT      ( zero ? )
+             XSAVE      STX,    ( save current value of X register )
+             TSX,                       ( setup for return stack access )
+             RP) 2+     LDA,
+             RP) 3 +    ORA,
+        0=   IF,        INY,    ( if zero bump Y to one )
+             ENDIF,
+             TYA,
+             PHA,               ( save result on stack )
+             XSAVE      LDX,    ( restore return stack pointer )
+             PUSH       JMP,    ( go push a boolean from stack )
+             END-CODE           ( terminate the CODE definition )
+
+                        [                       ]
+                        [      Return Stack     ]
+                        -------------------------
+                        [       high byte       ] second
+    RP) = $0101,X --->  [       low byte        ] item
+                        -------------------------
+                        [       high byte       ] bottom
+                        [       low byte        ] item
+                        -------------------------
+                S --->  [       free byte       ]
+
+FORTH Registers
+
+Several FORTH registers are available only at the assembly level and
+have been given names that return their memory addresses. They are:
+
+    IP  Address of the Interpretive Pointer, Specifying the next
+        FORTH address which will be interpreted by next.
+    W   Address of the Interpretive Pointer, specifying the next
+        definition just interpreted by NEXT.
+    UP  User Pointer containing address of the base of the user area.
+    N   A utility area in z-page from N-1 through N+7.
+
+CPU Registers
+
+When FORTH execution leaves NEXT to execute a CODE definition,
+the following conventions apply:
+
+    1.  The Y index register is zero. It may be freely used.
+    2.  The Z index register defines the low byte of the bottom data
+        stack item relative to machine address $0000.
+    3.  The CPU stack pointer S points one byte below the bottom
+        return stack item. Executing PLA, will pull this byte to the
+        accumulator.
+    4.  The accumulator may be freely used.
+    5.  The processor is in binary mode and must be returned in
+        that mode.
+
+XSAVE
+
+XSAVE is a byte buffer in z-page, for temporary storage of the X register.
+Typical usage, with a call which will change X, is:
+
+        CODE DEMO
+             XSAVE      STX,    ( save current value of X )
+             USER'S     JSR,    ( Go to a user's routine )
+             XSAVE      LDX,    ( restore value of X register )
+             NEXT       JMP,    ( return to FORTH )
+             END-CODE           ( terminate the CODE definition )
+
+When absolute memory registers are required, use the 'N Area' in the
+base (zero) page. These registers may be used as pointers for indexed/
+indirect addressing or for temporary values. As an example of use, see
+CMOVE in the "fig MODEL" installation manual.
+
+The assembler word N returns the base address (64FORTH=$0068).
+The N area spans 9 bytes, from N-1 to N+7. Conventionally, N-1
+holds one byte and N, N+2, N+4, N+6 are pairs which may hold 16 bit
+values. See SETUP for help on moving values to the N area.
+
+It is very important to note that many FORTH procedures use N. Thus, N
+may only be used within a single code definition. Never expect that a
+value will remain there, outside a single definition.
+
+        CODE DEMO       HEX
+             6 #        LDA,
+             N 1 -      STA,    ( setup a counter )
+        BEGIN,
+             8001       BIT,    ( tickle a port in KIM-1 )
+             N 1 -      DEC,    ( decrement the counter )
+        0=   UNTIL,             ( loop till counter = zero )
+             NEXT       JMP,    ( return to FORTH )
+             END-CODE           ( complete the definition )
+
+SETUP
+
+Often we wish to move stack values to the N area. The subroutine
+SETUP has been provided for this purpose...Upon entering SETUP the
+accumulator specifies the quantity of 16-bit values to be moved to the
+N area. That is, A may be 1, 2, 3, or 4, only:
+
+             3 #        LDA,    ( setup to move three values )
+             SETUP      JSR,    ( move 3 16 bit values to N area )
+
+      stack  before     N after  stack after
+             H high                    H
+             G low                bot-G
+             F          F
+             E          E
+             D          D
+      sec->  C          C
+             B          B
+      bot->  A     N--> A
+
+Control Flow
+
+FORTH discards the usual convention of assembler labels. Instead, two
+replacements are used. First, each FORTH definition name is
+permanently included in the dictionary, This allows procedures to be
+located and executed by name at any time as well as compiled within
+other definitions.
+
+Secondly, within a code definition, executing flow is controlled by
+label-less branching according to "structured programming". This
+method is identical to the form used in colon-definitions. Branch
+calculations are done at assembly time by temporary stack values
+placed by the control words:
+
+        BEGIN,  UNTIL,  IF,  ELSE,  ENDIF,
+
+        ( THEN, is used in some assemblers in place of ENDIF, )
+
+Here again, the assembler words end with a comma to indicate that
+code is being produced and to clearly differentiate from the high-level
+form.
+
+One major difference occurs! High-level flow is controlled by run-time
+boolean values on the data stack. Assembly flow is instead controlled by
+processor status bits. The programmer must indicate which status bit to
+test, just before a conditional branching word (IF, and UNTIL,).
+
+Examples are:
+
+        PORT    LDA,
+    0=  IF,                     ( read port, if equal to zero do )
+                <function A>    ( <function A> )
+        ENDIF,
+
+        PORT    LDA,
+    0=  NOT IF,                 ( read port, if not equal to zero )
+                <function A>    ( do <function A> )
+        ENDIF,
+
+The conditional specifiers for 6502 are:
+
+        CS              test carry set          C=1 in processor status
+        CS NOT          test carry clear        C=0
+        0<              byte less than zero     N=1
+        0< NOT          test positive           N=0
+        0=              equal to zero           Z=1
+        0= NOT          test not equal zero     Z=0
+        OVS             overflow set            V=1 ( added to 64FORTH )
+        OVS NOT         overflow clear          V=0 ( added to 64FORTH )
+
+Conditional Looping
+
+A conditional loop is formed at assembler level by placing the portion
+to be repeated between BEGIN, and UNTIL,:
+
+        6 #     LDA,
+        N       STA,    ( define loop counter in N )
+    BEGIN,
+        PORT    DEC,    ( repeated action )
+        N       DEC,
+    0= UNTIL,           ( N reaches zero )
+
+First, the byte at address N is loaded with the value 6. The beginning of
+the loop is marked (at assembly time) by BEGIN,. Memory at PORT is
+decremented, then the loop counter N is decremented. Of course, the
+CPU updates its status register as N is decremented. Finally, a test for
+Z=1 is made; if N hasn't reached zero, execution returns to BEGIN,.
+When N reaches zero (after executing PORT DEC, 6 times) execution
+continues ahead after UNTIL,. Note that BEGIN, generates no machine
+code, but is only an assembly time locator.
+
+Conditional Execution
+
+Paths of execution may be chosen at assembly in a similar fashion as
+done in colon-definitions. In this case, the branch is chosen based on a
+processor status condition code.
+
+        PORT    LDA,
+    0=  IF,
+                <function A>    ( executed if PORT is zero )
+        ENDIF,
+                                ( then continue on with rest )
+
+In this example, the accumulator is loaded from PORT. The zero status
+is tested if set (Z=1). If so, the code (for zero set) is executed. Whether
+the zero status is set or not, execution will resume at ENDIF,.
+
+The conditional branching also allows a specific action for the false
+case. Here we see the addition of the ELSE, part.
+
+        PORT    LDA,
+    0=  IF,
+                <function A>    ( executed if PORT is zero )
+        ELSE,
+                <function B>    ( executed if PORT is not zero )
+        ENDIF,
+                                ( then continue on with rest )
+
+The test of PORT will select one of two execution paths, before
+resuming execution after ENDIF,. The next example increments N based
+on bit D7 of PORT:
+
+        PORT    LDA,
+    0<  IF,
+        N       DEC,    ( if D7=1, decrement N )
+        ELSE,
+        N       INC,    ( if D7=0, increment N )
+    ENDIF,
+                        ( continue ahead )
+
+Conditional Nesting
+
+Conditionals may be nested according to the conventions of structured
+programming. That is, each conditional sequence begun (IF, BEGIN,)
+must be terminated (ENDIF, UNTIL,) before the next earlier conditional
+is terminated. An ELSE, must pair with the immediately preceeding IF,.
+
+        BEGIN,      <code always executed>
+             CS IF, <code if carry set>
+                    ELSE,    <code if carry clear>
+                    ENDIF,
+             0= NOT UNTIL, ( loop till condition flag is non-zero )
+                <code that continues onward>
+
+Next is an error that the assembler security will reveal.
+
+        BEGIN,     PORT LDA,
+           0=  IF, BOT  INC,
+               0=  UNTIL, ENDIF,
+
+The UNTIL, will not complete the pending BEGIN, since the immediately
+preceeding IF, is not completed. An error trap will occur at UNTIL,
+saying "conditionals not paired".
+
+Return of Control, revisited
+
+When concluding a code definition, several common stack manipulations
+often are needed. These functions are already In the nucleus, so we
+may share their use just by knowing their return points. Each of these
+returns control to NEXT.
+
+        POP             Remove one 16-bit stack value.
+        POPTWO          Remove two 16-bit stack values.
+        PUSH            Add two bytes to the data stack.
+        PUT             Write two bytes to the data stack, over the
+                        present bottom of the stack.
+
+Our next example complements a byte in memory. The bytes' address
+is on the stack when INVERT is executed.
+
+        CODE INVERT             ( a memory byte ) HEX
+             BOT X)     LDA,    ( fetch byte addressed by stack )
+             FF #       EOR,    ( complement the accumulator )
+             BOT X)     STA,    ( replace result in memory )
+             POP        JMP,    ( discard pointer from stack )
+             END-CODE           ( and return to next )
+
+A new stack value may result from a code definition. We could program
+placing it on the stack by:
+
+        CODE ONE                ( put 1 on the stack )
+                        DEX,
+                        DEX,    ( make room on the data stack )
+             1 #        LDA,    ( get a 1 in accumulator )
+             BOT        STA,    ( store low byte )
+             BOT 1+     STA,    ( high byte stored from Y since=zero )
+             NEXT       JMP,    ( return to FORTH )
+             END-CODE
+
+A simpler version could use PUSH:
+
+        CODE ONE
+             1 #        LDA,
+                        PHA,    ( push low byte to machine stack )
+                        TYA,    ( clear accumulator, high byte=zero )
+             PUSH       JMP,    ( go push to data stack )
+             END-CODE
+
+The convention for PUSH and PUT is:
+
+    1.  push the low byte onto the machine stack.
+    2.  leave the high byte in accumulator.
+    3.  jump to PUSH or PUT.
+
+PUSH will place the two bytes as the new bottom of the data stack.
+PUT will over-write the present bottom of the stack with the two bytes.
+Failure to push exactly one byte on the machine stack will disrupt
+execution upon usage!!
+
+Fooling Security
+
+Occasionally we wish to generate unstructured code. To accomplish
+this, we can control the assembly time security checks for our purpose.
+First, we must note the parameters utilized by the control structures at
+assembly time. The notation below is taken from the assembly glossary.
+The --- indicates assembly time execution, and separate input stack
+values from the output stack values of the words execution.
+
+        BEGIN,  ==>                            --- addrB 1
+        UNTIL,  ==>    addrB 1         cc      ---
+        IF,     ==>                    cc      --- addrI 2
+        ELSE,   ==>    addrI 2                 --- addrE 2
+        ENDIF,  ==>    addrI 2                 ---
+                or     addrE 2                 ---
+
+The address values indicate the machine location of the corresponding
+'B'EGIN, 'I'F, or 'E'LSE,. cc represents the condition code to select the
+processor status bit referenced. The digit 1 or 2 is tested for condition
+pairing.
+
+The general method of security control is to drop off the check digit an
+manipulate the addresses at assembly time. The security against errors
+is less, but the programmer is usually paying intense attention to detail
+during this effort.
+
+To generate the equivalent of the high level:
+
+        BEGIN <a> WHILE <b> REPEAT
+
+We write in assembly:
+
+        BEGIN, DROP             ( the check digit 1, leaving addrB )
+             <a>
+             CS IF,             ( leaves addrI and digit 2 )
+                <b>
+                ROT             ( bring addrB to bottom
+                JMP,            ( to addrB of BEGIN, )
+             ENDIF,             ( complete false forward branch from IF, )
+
+It is essential to write the assembly time stack on paper, and run
+through the assembly steps, to be sure that the check digits are
+dropped and re-inserted at the correct points and addresses are
+correctly available.
+
+NOTE: The ASSEMBLER glossary is included in the main glossary at
+the end of this manual.

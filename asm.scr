@@ -1,0 +1,264 @@
+SCR # 20 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 FORTH DEFINITIONS  DECIMAL
+  2 
+  3 VOCABULARY ASSEMBLER  IMMEDIATE
+  4 
+  5 ASSEMBLER DEFINITIONS  HEX
+  6 
+  7 0 VARIABLE MODE
+  8 
+  9 : MODE!  ( N -- ) MODE ! ;
+ 10 
+ 11 : ABS!  ( -- ) 2 MODE! ;
+ 12 
+ 13 : END-CODE
+ 14   CURRENT @ CONTEXT ! ?CSP BASE ! SMUDGE ;
+ 15 -->
+
+
+SCR # 21 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : ERR  ( N -- ) ABS! ERROR ;
+  3 
+  4 : NZPAG?  ( N -- N F )
+  5   DUP 0FF00 AND ;
+  6 
+  7 : #  ( N -- N )
+  8   NZPAG? IF 9 ERR THEN 3 MODE! ;
+  9 
+ 10 : )  ( -- )
+ 11   9 MODE! ;
+ 12 
+ 13 : ,X  ( N -- N )
+ 14   NZPAG? IF 4 MODE! ELSE 8 MODE! THEN ;
+ 15 -->
+
+
+SCR # 22 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : ,Y  ( N -- N )
+  3   NZPAG? IF 5 MODE! ELSE 0A MODE! THEN ;
+  4 
+  5 : X)  ( N -- N )
+  6   NZPAG? IF 9 ERR THEN 6 MODE! ;
+  7 
+  8 : )Y  ( N -- N )
+  9   NZPAG? IF 9 ERR THEN 7 MODE! ;
+ 10 
+ 11 : .A  ( -- )
+ 12   0 MODE! ;
+ 13 -->
+ 14 
+ 15 
+
+
+SCR # 23 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : IMPLIED  <BUILDS C, DOES> C@ C, ;
+  3 
+  4 00 IMPLIED BRK,  18 IMPLIED CLC,  D8 IMPLIED CLD,
+  5 58 IMPLIED CLI,  B8 IMPLIED CLV,  CA IMPLIED DEX,
+  6 88 IMPLIED DEY,  E8 IMPLIED INX,  C8 IMPLIED INY,
+  7 EA IMPLIED NOP,  48 IMPLIED PHA,  08 IMPLIED PHP,
+  8 68 IMPLIED PLA,  28 IMPLIED PLP,  40 IMPLIED RTI,
+  9 60 IMPLIED RTS,  38 IMPLIED SEC,  F8 IMPLIED SED,
+ 10 78 IMPLIED SEI,  AA IMPLIED TAX,  A8 IMPLIED TAY,
+ 11 BA IMPLIED TSX,  8A IMPLIED TXA,  9A IMPLIED TXS,
+ 12 98 IMPLIED TYA,
+ 13 
+ 14 : JSR  ( ADR -- ) 20 C, , ;
+ 15 -->
+
+
+SCR # 24 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 0 VARIABLE OPCOD  -2 ALLOT
+  3 
+  4 6DFF ,  6965 ,  797D ,  7161 ,  FF75 ,  FFFF ,
+  5 252D ,  3D29 ,  2139 ,  3531 ,  FFFF ,  0E0A ,
+  6 FF06 ,  FFFF ,  FFFF ,  FF16 ,  FFFF ,  242C ,
+  7 FFFF ,  FFFF ,  FFFF ,  FFFF ,  CDFF ,  C9C5 ,
+  8 D9DD ,  D1C1 ,  FFD5 ,  FFFF ,  E4EC ,  FFE0 ,
+  9 FFFF ,  FFFF ,  FFFF ,  CCFF ,  C0C4 ,  FFFF ,
+ 10 FFFF ,  FFFF ,  FFFF ,  C6CE ,  DEFF ,  FFFF ,
+ 11 D6FF ,  FFFF ,  4DFF ,  4945 ,  595D ,  5141 ,
+ 12 FF55 ,  FFFF ,  E6EE ,  FEFF ,  FFFF ,  F6FF ,
+ 13 FFFF ,  4CFF ,  FFFF ,  FFFF ,  FFFF ,  6CFF ,
+ 14 FFFF ,  A5AD ,  BDA9 ,  A1B9 ,  B5B1 ,  FFFF ,
+ 15 -->
+
+
+SCR # 25 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1                                                                 
+  2 AEFF ,  A2A6 ,  BEFF ,  FFFF ,  FFFF ,  FFB6 ,
+  3 FFFF ,  A5AD ,  BDA9 ,  A1B9 ,  B5B1 ,  FFFF ,
+  4 AEFF ,  A2A6 ,  BEFF ,  FFFF ,  FFFF ,  FFB6 ,
+  5 A4AC ,  BCA0 ,  FFFF ,  B4FF ,  FFFF ,  4E4A ,
+  6 FF46 ,  FF5E ,  FFFF ,  FF56 ,  FFFF ,  050D ,
+  7 1D09 ,  0119 ,  1511 ,  FFFF ,  2E2A ,  FF26 ,
+  8 FF3E ,  FFFF ,  FF36 ,  6AFF ,  666E ,  7EFF ,
+  9 FFFF ,  76FF ,  FFFF ,  EDFF ,  E9E5 ,  F9FD ,
+ 10 F1E1 ,  FFF5 ,  FFFF ,  858D ,  9DFF ,  8199 ,
+ 11 9591 ,  FFFF ,  8EFF ,  FF86 ,  FFFF ,  FFFF ,
+ 12 FFFF ,  FF96 ,  848C ,  FFFF ,  FFFF ,  94FF ,
+ 13 FFFF ,
+ 14 
+ 15 -->
+
+
+SCR # 26 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : I@
+  3   MODE @ SWAP 0B * OPCOD + + C@ ;
+  4 
+  5 : PUTC
+  6   I@ C,  MODE @ IF
+  7     MODE @ 1 =  MODE @ 4 =  MODE @ 5 =
+  8     MODE @ 9 =  OR  OR  OR
+  9     IF , ELSE C, THEN  THEN
+ 10   ABS! ;
+ 11 
+ 12 -->
+ 13 
+ 14 
+ 15 
+
+
+SCR # 27 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : IS
+  3   <BUILDS C, DOES> C@
+  4   BEGIN  DUP I@ 0FF =  WHILE
+  5     MODE @ 8 = IF  4 MODE!  ELSE
+  6       MODE @ 0A = IF  5 MODE !  ELSE
+  7         MODE @ 2 = IF  1 MODE!  ELSE
+  8           3 ERR  THEN
+  9         THEN
+ 10       THEN
+ 11     REPEAT
+ 12   MODE @ 2 = IF  OVER  NZPAG?
+ 13     IF 1 MODE! THEN  DROP  THEN
+ 14   PUTC ;
+ 15 -->
+
+
+SCR # 28 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 00 IS ADC,   01 IS AND,   02 IS ASL,   03 IS BIT,
+  3 04 IS CMP,   05 IS CPX,   06 IS CPY,   07 IS DEC,
+  4 08 IS EOR,   09 IS INC,   0A IS JMP,   0B IS LDA,
+  5 0C IS LDX,   0D IS LDY,   0E IS LSR,   0F IS ORA,
+  6 10 IS ROL,   11 IS ROR,   12 IS SBC,   13 IS STA,
+  7 14 IS STX,   15 IS STY,
+  8 
+  9 : NOT  ( N1 -- N2 )
+ 10   20 XOR ;
+ 11 
+ 12 90 CONSTANT CC  B0 CONSTANT CS  50 CONSTANT VC
+ 13 70 CONSTANT VS  30 CONSTANT MI  10 CONSTANT PL
+ 14 F0 CONSTANT EQ  D0 CONSTANT NE
+ 15 -->
+
+
+SCR # 29 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : IF,
+  3   NOT C, 0 C, HERE ;
+  4 
+  5 : THEN,
+  6   HERE OVER - SWAP 1- C! ;
+  7 
+  8 : ELSE,
+  9   CLV, VS IF, SWAP THEN, ;
+ 10 
+ 11 : BEGIN,
+ 12   HERE ;
+ 13 
+ 14 -->
+ 15 
+
+
+SCR # 30 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : UNTIL,
+  3   NOT C, HERE 1+ - C, ;
+  4 
+  5 : AGAIN,
+  6   JMP, ;
+  7 
+  8 : WHILE,
+  9   IF, ;
+ 10 
+ 11 : REPEAT,
+ 12   SWAP JMP, THEN, ;
+ 13 
+ 14 -->
+ 15 
+
+
+SCR # 31 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 ' LIT 13 + ( A059 )  CONSTANT PUT
+  3 ' LIT 11 + ( A057 )  CONSTANT PUSH
+  4 ' SP@ 1 +  ( A3B0 )  CONSTANT PUSH0A
+  5 ' (DO) 0E + ( A170 )  CONSTANT POP
+  6 ' (DO) 0C + ( A16E )  CONSTANT POPTWO
+  7 ' AND  9 +  ( A377 )  CONSTANT BINARY
+  8 ' EXECUTE NFA 11 - ( A086 )  CONSTANT SETUP
+  9 ' LIT 18 + ( A05E )  CONSTANT NEXT
+ 10   84 CONSTANT  IP
+ 11   87 CONSTANT  W
+ 12   7C CONSTANT  N
+ 13   8B CONSTANT  XSAVE
+ 14   89 CONSTANT  UP
+ 15 -->
+
+
+SCR # 32 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : BOT  0 ,X ;
+  3 
+  4 : SEC  2 ,X ;
+  5 
+  6 : R  0101 ,X ;
+  7 
+  8 FORTH DEFINITIONS
+  9 
+ 10 : ;CODE
+ 11   ?CSP COMPILE (;CODE) [COMPILE] [
+ 12   BASE @ HEX !CSP [COMPILE] ASSEMBLER
+ 13   ASSEMBLER ABS! ;  IMMEDIATE
+ 14 -->
+ 15 
+
+
+SCR # 33 
+  0 ( VIC-FORTH 6502 ASSEMBLER )
+  1 
+  2 : CODE
+  3   ?EXEC [COMPILE] ASSEMBLER
+  4   ASSEMBLER ABS! CREATE BASE @ HEX
+  5   !CSP ; IMMEDIATE
+  6 
+  7 FORTH  DECIMAL
+  8 
+  9 
+ 10 
+ 11 
+ 12 
+ 13 
+ 14 
+ 15 
